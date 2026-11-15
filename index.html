@@ -358,25 +358,10 @@ section { padding: clamp(66px, 9vw, 104px) max(18px, env(safe-area-inset-right))
 .choice input:checked + label { background: var(--wine); border-color: var(--wine); color: var(--cream); box-shadow: 0 12px 26px -14px var(--wine); }
 .choice input:focus-visible + label { outline: 2px solid var(--wine); outline-offset: 3px; }
 
-.stepper { display: inline-flex; border: 1px solid #cdb27a; background: #fffdf8; }
-.stepper button { width: 54px; border: 0; background: none; font-size: 1.7rem; color: var(--wine); cursor: pointer; }
-.stepper button:hover { background: rgba(122, 27, 61, .08); }
-.stepper output { min-width: 96px; display: grid; place-items: center; padding: 8px; border-inline: 1px solid #cdb27a; font: 700 1.2rem var(--serif); color: var(--navy); }
 .ticket .btn { width: 100%; margin-top: 30px; }
 .form-message { text-align: center; line-height: 1.7; margin-top: 18px; font-size: 14px; font-weight: 500; color: var(--wine); }
 .form-message:empty { display: none; }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-
-
-.count-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-top:8px; }
-.count-group { min-width:0; }
-.count-group label { min-height:34px; }
-.accompagnants-fields { display:grid; gap:12px; margin-top:18px; }
-.accompagnant-card { padding:14px; border:1px solid rgba(205,178,122,.7); background:#fffaf0; }
-.accompagnant-card strong { display:block; color:var(--wine); font:600 1.15rem var(--serif); margin-bottom:6px; }
-.accompagnant-card .name-grid { margin-top:4px; }
-.sleep-notice { margin-top:18px; padding:15px 16px; border:1px solid #c9a75f; background:#f5edda; color:#102443; text-align:center; font-size:13px; line-height:1.6; font-weight:600; }
-@media(max-width:560px) { .count-row { grid-template-columns:1fr; gap:8px; } .count-group label { min-height:0; } }
 
 /* ---------- PLAYLIST ---------- */
 .playlist { background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(112, 43, 61, .18), transparent 70%), var(--navy); overflow: hidden; }
@@ -611,12 +596,6 @@ img, svg { max-width: 100%; }
   .box input[type="text"] { font-size: 16px; padding: 16px 14px; min-height: 52px; }
  
   .choice label { min-height: 62px; font-size: 1.25rem; }
-  .count-row { grid-template-columns: 1fr; gap: 14px; }
-  .stepper { display: flex; width: 100%; }
-  .stepper button { width: 64px; min-height: 52px; font-size: 1.9rem; flex: none; }
-  .stepper output { flex: 1; min-width: 0; font-size: 1.3rem; }
-  .accompagnant-card { padding: 12px; }
-  .sleep-notice { font-size: 13.5px; padding: 14px; }
   .form-message { font-size: 14.5px; }
  
   /* Playlist */
@@ -656,8 +635,6 @@ img, svg { max-width: 100%; }
   .names { margin: 14px 0 4px; }
   .links { max-height: calc(100svh - 56px); overflow-y: auto; }
 }
- 
-   
 </style>
 </head>
 
@@ -821,31 +798,6 @@ Les noms et extensions doivent correspondre exactement aux chemins utilisés ici
       </div>
       <p class="err" id="errPresence"></p>
     </fieldset>
-
-    <div id="blocNombre" class="hidden">
-      <div class="count-row">
-        <div class="count-group">
-          <label for="enfantsMinus">Nombre d'enfants</label>
-          <div class="stepper">
-            <button type="button" id="enfantsMinus" aria-label="Un enfant de moins">−</button>
-            <output id="enfantsOut" aria-live="polite">0</output>
-            <button type="button" id="enfantsPlus" aria-label="Un enfant de plus">+</button>
-          </div>
-        </div>
-        <div class="count-group">
-          <label for="adultesMinus">Nombre d'adultes accompagnants</label>
-          <div class="stepper">
-            <button type="button" id="adultesMinus" aria-label="Un adulte de moins">−</button>
-            <output id="adultesOut" aria-live="polite">0</output>
-            <button type="button" id="adultesPlus" aria-label="Un adulte de plus">+</button>
-          </div>
-        </div>
-      </div>
-      <div id="accompagnantsFields" class="accompagnants-fields"></div>
-      <div id="noticeDodo" class="sleep-notice hidden">
-        ✨ Bonne nouvelle : les jeunes peuvent dormir sur place. Pensez simplement à apporter un matelas et un sac de couchage !
-      </div>
-    </div>
 
     <!-- piège anti-robots : doit rester vide -->
     <div class="hp" aria-hidden="true"><label>Ne pas remplir <input type="text" id="piege" tabindex="-1" autocomplete="off"></label></div>
@@ -1141,78 +1093,13 @@ async function envoyerDonnees(data, button, message, successText) {
 
 
 /* =====================================
-   FORMULAIRE DE PRÉSENCE
+   FORMULAIRE DE PRÉSENCE (prénom, nom, oui / non)
 ===================================== */
 const form = $("formPresence");
-const blocNombre = $("blocNombre");
-const enfantsOut = $("enfantsOut");
-const adultesOut = $("adultesOut");
-const accompagnantsFields = $("accompagnantsFields");
-const noticeDodo = $("noticeDodo");
-
-let nombreEnfants = 0;
-let nombreAdultes = 0;
-
-function afficherCompteurs() {
-  enfantsOut.textContent = String(nombreEnfants);
-  adultesOut.textContent = String(nombreAdultes);
-}
-
-function creerChampsAdultes() {
-  accompagnantsFields.replaceChildren();
-  for (let i = 1; i <= nombreAdultes; i++) {
-    const card = document.createElement("div");
-    card.className = "accompagnant-card";
-    const titre = document.createElement("strong");
-    titre.textContent = "Adulte accompagnant " + i;
-    const grid = document.createElement("div");
-    grid.className = "name-grid";
-
-    [["Prénom", "prenomAdulte" + i, "Ex. Alex"], ["Nom", "nomAdulte" + i, "Ex. Dupont"]].forEach(([labelText, id, placeholder]) => {
-      const wrap = document.createElement("div");
-      const label = document.createElement("label");
-      label.htmlFor = id;
-      label.textContent = labelText + " *";
-      const input = document.createElement("input");
-      input.type = "text";
-      input.id = id;
-      input.name = id;
-      input.maxLength = 60;
-      input.placeholder = placeholder;
-      wrap.append(label, input);
-      grid.append(wrap);
-    });
-
-    card.append(titre, grid);
-    accompagnantsFields.append(card);
-  }
-}
-
-$("enfantsMinus").addEventListener("click", () => {
-  nombreEnfants = Math.max(0, nombreEnfants - 1);
-  afficherCompteurs();
-});
-$("enfantsPlus").addEventListener("click", () => {
-  nombreEnfants = Math.min(12, nombreEnfants + 1);
-  afficherCompteurs();
-});
-$("adultesMinus").addEventListener("click", () => {
-  nombreAdultes = Math.max(0, nombreAdultes - 1);
-  afficherCompteurs();
-  creerChampsAdultes();
-});
-$("adultesPlus").addEventListener("click", () => {
-  nombreAdultes = Math.min(6, nombreAdultes + 1);
-  afficherCompteurs();
-  creerChampsAdultes();
-});
 
 const choix = () => (form.querySelector('input[name="presence"]:checked') || {}).value || "";
 
 form.querySelectorAll('input[name="presence"]').forEach(r => r.addEventListener("change", () => {
-  const present = choix().startsWith("Oui");
-  blocNombre.classList.toggle("hidden", !present);
-  noticeDodo.classList.toggle("hidden", !present);
   $("errPresence").textContent = "";
 }));
 
@@ -1229,64 +1116,28 @@ form.addEventListener("submit", async function (e) {
   const prenom = $("prenom").value.trim();
   const nom = $("nom").value.trim();
   const presence = choix();
-  let ok = true;
 
   erreur("prenom", "errPrenom", prenom ? "" : "Il nous faut ton prénom !");
   erreur("nom", "errNom", nom ? "" : "Il nous faut ton nom !");
   $("errPresence").textContent = presence ? "" : "Choisis ton destin !";
-  if (!prenom || !nom || !presence) ok = false;
 
-  const accompagnants = [];
-  if (presence.startsWith("Oui")) {
-    for (let i = 1; i <= nombreAdultes; i++) {
-      const p = $("prenomAdulte" + i);
-      const n = $("nomAdulte" + i);
-      const prenomAdulte = p.value.trim();
-      const nomAdulte = n.value.trim();
-      p.classList.toggle("bad", !prenomAdulte);
-      n.classList.toggle("bad", !nomAdulte);
-      if (!prenomAdulte || !nomAdulte) ok = false;
-      accompagnants.push({ prenom: prenomAdulte, nom: nomAdulte });
-    }
-  }
-
-  if (!ok) {
+  if (!prenom || !nom || !presence) {
     $("resultat").textContent = "Vérifie les champs obligatoires avant d'envoyer.";
     return;
   }
 
-  const totalPersonnes = presence.startsWith("Oui") ? 1 + nombreEnfants + nombreAdultes : 0;
-  const data = {
-    type: "presence",
-    prenom,
-    nom,
-    presence,
-    nombre: String(totalPersonnes),
-    enfants: presence.startsWith("Oui") ? String(nombreEnfants) : "0",
-    adultes: presence.startsWith("Oui") ? String(nombreAdultes) : "0",
-    accompagnants: presence.startsWith("Oui")
-      ? accompagnants.map(a => a.prenom + " " + a.nom).join(", ")
-      : ""
-  };
+  const data = { type: "presence", prenom, nom, presence };
 
   const envoye = await envoyerDonnees(
     data,
     $("btnPresence"),
     $("resultat"),
     presence.startsWith("Oui")
-      ? "C'est validé ! Les jeunes peuvent dormir sur place avec un matelas et un sac de couchage. À très vite ! 🥂"
+      ? "C'est validé ! À très vite ! 🥂"
       : "Réponse enregistrée. Merci de nous avoir répondu !"
   );
 
-  if (envoye) {
-    this.reset();
-    nombreEnfants = 0;
-    nombreAdultes = 0;
-    afficherCompteurs();
-    creerChampsAdultes();
-    blocNombre.classList.add("hidden");
-    noticeDodo.classList.add("hidden");
-  }
+  if (envoye) this.reset();
 });
 
 
